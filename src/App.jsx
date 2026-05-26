@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Header from "./Header";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom"; // ✅ Changed
 import { ToastContainer } from "react-toastify";
 
 import "./App.css";
@@ -20,7 +20,7 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter basename="/ecommers-react">
+    <HashRouter> {/* ✅ Removed basename - not needed with HashRouter */}
       <Header />
       <Routes>
         <Route path="/" element={<Home data={data} />} />
@@ -30,6 +30,6 @@ export default function App() {
         <Route path="/Cart" element={<Cart data={data} />} />
       </Routes>
       <ToastContainer />
-    </BrowserRouter>
+    </HashRouter>
   );
 }
