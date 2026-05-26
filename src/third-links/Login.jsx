@@ -12,8 +12,8 @@ export default function Login() {
 
     const sd = (e) => {
         const { name, value } = e.target;
-        sud(prev => ({ ...prev, [name]: value }))
-    }
+        sud(prev => ({ ...prev, [name]: value }));
+    };
 
     const navigate = useNavigate();
 
@@ -21,30 +21,17 @@ export default function Login() {
         e.preventDefault();
         if (userdata.email && userdata.password) {
             try {
-                // step 1 - firebase login
-                const userCredential = await signInWithEmailAndPassword(auth, userdata.email, userdata.password)
-                const user = userCredential.user;
+                // Firebase login — no localhost needed ✅
+                await signInWithEmailAndPassword(auth, userdata.email, userdata.password);
 
-                // step 2 - fetch user from API using email
-                const res = await fetch(`http://localhost:3006/Users?email=${userdata.email}`) // ✅ userdata.email not email
-                const users = await res.json()
-                console.log(users)        // is it an array?
-                console.log(users[0])     // is first user correct?
-                console.log(users[0].id)
-                // step 3 - save to localStorage
-                localStorage.setItem("userId", users[0].id)
-                localStorage.setItem("userCart", JSON.stringify(users[0].cartprod))
-
-                toast("login successful", { position: "top-right", autoClose: 2000 })
+                toast("Login successful", { position: "top-right", autoClose: 2000 });
                 navigate("/");
 
             } catch (error) {
-                console.log(error.code);
-                console.log(error.message);
                 toast(error.message, { position: "top-right" });
             }
         }
-    }
+    };
 
     return (
         <div className="d-flex justify-content-center align-items-center" style={{ height: "80vh" }}>
@@ -60,13 +47,13 @@ export default function Login() {
                         <label>Password :</label><br />
                         <input type="password" name="password" value={userdata.password} onChange={sd} />
                         <br /><br />
-                        <button type="submit" className="btn btn-primary">submit</button>
-                        <p>don't have an account?
+                        <button type="submit" className="btn btn-primary">Submit</button>
+                        <p>Don't have an account?
                             <Link className="btn btn-secondary ms-2" to="/Register">Register</Link>
                         </p>
                     </form>
                 </div>
             </div>
         </div>
-    )
+    );
 }

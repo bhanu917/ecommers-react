@@ -1,5 +1,6 @@
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { toast } from "react-toastify";
 import { useNavigate, Link } from "react-router-dom";
 import React, { useState } from "react";
@@ -10,7 +11,6 @@ export default function Register() {
         email: "",
         password: "",
         repassword: "",
-        cartprod: {}
     });
 
     const sd = (e) => {
@@ -22,52 +22,35 @@ export default function Register() {
 
     const submit = async (e) => {
         e.preventDefault();
-        if (
-            userdata.name.length >= 5 &&
-            userdata.email &&
-            userdata.password &&
-            userdata.repassword &&
-            userdata.password === userdata.repassword
-        ) {
-            try {
-                // Step 1: Create user in Firebase
-                const userCredential = await createUserWithEmailAndPassword(
-                    auth,
-                    userdata.email,
-                    userdata.password
-                );
-                const user = userCredential.user;
 
-                // Step 2: Set display name immediately
-                await updateProfile(user, {
-                    displayName: userdata.name
-                });
-
-                // Step 3: Save to json-server WITHOUT id → auto-increment
-                await fetch("http://localhost:3006/Users", {
-                    method: "POST",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({
-                        name: userdata.name,
-                        email: userdata.email,
-                        firebaseUid: user.uid, // keep Firebase UID separately
-                        cartprod: {}
-                    })
-                });
-
-                toast("Account created", { position: "top-right", autoClose: 2000 });
-                navigate("/Login");
-            } catch (error) {
-                console.log(error.code);
-                console.log(error.message);
-                toast(error.message, { position: "top-right" });
-            }
-        } else if (!userdata.name || !userdata.email || !userdata.password || !userdata.repassword) {
-            toast("Please fill all the details");
+        if (!userdata.name || !userdata.email || !userdata.password || !userdata.repassword) {
+            return toast("Please fill all the details");
         } else if (userdata.name.length < 5) {
-            toast("Name must be greater than 5 characters");
+            return toast("Name must be greater than 5 characters");
         } else if (userdata.password !== userdata.repassword) {
-            toast("Please verify both passwords");
+            return toast("Please verify both passwords");
+        }
+
+        try {
+            // Step 1: Create user in Firebase Auth
+            const userCredential = await createUserWithEmailAndPassword(auth, userdata.email, userdata.password);
+            const user = userCredential.user;
+
+            // Step 2: Set display name
+            await updateProfile(user, { displayName: userdata.name });
+
+            // Step 3: Save user to Firestore using Firebase UID as document ID ✅
+            await setDoc(doc(db, "Users", user.uid), {
+                name: userdata.name,
+                email: userdata.email,
+                cartprod: {}
+            });
+
+            toast("Account created", { position: "top-right", autoClose: 2000 });
+            navigate("/Login");
+
+        } catch (error) {
+            toast(error.message, { position: "top-right" });
         }
     };
 

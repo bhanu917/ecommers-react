@@ -1,30 +1,49 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { db, auth } from "../firebase";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Cart({ data }) {
     const [cartprod, setCartprod] = useState({});
-    const userId = localStorage.getItem("userId");
+    const [userId, setUserId] = useState(null);
 
-    // load cart from API on mount
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, (user) => {
+            if (user) setUserId(user.uid);
+            else setUserId(null);
+        });
+        return () => unsub();
+    }, []);
+
     useEffect(() => {
         const loadCart = async () => {
-            const res = await fetch(`http://localhost:3006/Users/${userId}`)
-            const user = await res.json()
-            setCartprod(user.cartprod || {})
+            try {
+                const snap = await getDoc(doc(db, "Users", userId));
+                if (snap.exists()) setCartprod(snap.data().cartprod || {});
+            } catch (err) {
+                console.error("Error loading cart:", err);
+            }
+        };
+        if (userId) loadCart();
+    }, [userId]);
+
+    const saveCart = async (newCart) => {
+        try {
+            const ref = doc(db, "Users", userId);
+            const snap = await getDoc(ref);
+            if (snap.exists()) await updateDoc(ref, { cartprod: newCart });
+            else await setDoc(ref, { cartprod: newCart });
+        } catch (err) {
+            console.error("Failed to save cart:", err);
         }
-        if (userId) loadCart()
-    }, [userId])
+    };
 
     const incid = async (id) => {
-        const newVal = (cartprod[id] || 0) + 1
-        const newCart = { ...cartprod, [id]: newVal }
-        setCartprod(newCart)
-        await fetch(`http://localhost:3006/Users/${userId}`, {
-            method: "PATCH",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ cartprod: newCart })
-        })
-    }
+        const newCart = { ...cartprod, [id]: (cartprod[id] || 0) + 1 };
+        setCartprod(newCart);
+        if (userId) await saveCart(newCart);
+    };
 
     const decid = async (id) => {
         const currentVal = cartprod[id] || 0;
@@ -36,35 +55,17 @@ export default function Cart({ data }) {
             newCart = { ...cartprod, [id]: currentVal - 1 };
         }
         setCartprod(newCart);
-        try {
-            await fetch(`http://localhost:3006/Users/${userId}`, {
-                method: "PATCH",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ cartprod: newCart }),
-            });
-        } catch (err) {
-            console.error("Failed to update cart:", err);
-        }
+        if (userId) await saveCart(newCart);
     };
 
     const removeItem = async (id) => {
-        const newCart = { ...cartprod }
-        delete newCart[id]  // remove product completely
-        setCartprod(newCart)
-        await fetch(`http://localhost:3006/Users/${userId}`, {
-            method: "PATCH",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ cartprod: newCart })
-        })
-    }
+        const { [id]: _, ...newCart } = cartprod;
+        setCartprod(newCart);
+        if (userId) await saveCart(newCart);
+    };
 
-    // filter only products that are in cart (quantity > 0)
-    const cartItems = data.filter(item => cartprod[item.id] > 0)
-
-    // calculate total price
-    const total = cartItems.reduce((sum, item) => {
-        return sum + (item.price * cartprod[item.id])
-    }, 0)
+    const cartItems = data.filter(item => cartprod[item.id] > 0);
+    const total = cartItems.reduce((sum, item) => sum + (item.price * cartprod[item.id]), 0);
 
     if (cartItems.length === 0) {
         return (
@@ -72,7 +73,7 @@ export default function Cart({ data }) {
                 <h3>Your cart is empty</h3>
                 <Link to="/" className="btn btn-primary mt-3">Continue Shopping</Link>
             </div>
-        )
+        );
     }
 
     return (
@@ -123,5 +124,5 @@ export default function Cart({ data }) {
                 <button className="btn btn-success">Checkout</button>
             </div>
         </div>
-    )
+    );
 }

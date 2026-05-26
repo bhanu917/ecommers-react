@@ -1,60 +1,70 @@
 import React, { useState, useEffect } from "react";
+import { db, auth } from "../firebase";
+import { doc, getDoc, updateDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 
 export default function Home({ data }) {
     const [ival, sival] = useState({});
-    const userId = localStorage.getItem("userId");
+    const [userId, setUserId] = useState(null);
 
-    // load cart from API on mount
+    // Get logged-in user
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, (user) => {
+            if (user) setUserId(user.uid);
+            else setUserId(null);
+        });
+        return () => unsub();
+    }, []);
+
+    // Load cart from Firestore when userId is ready
     useEffect(() => {
         const loadCart = async () => {
-            const res = await fetch(`http://localhost:3006/Users/${userId}`)
-            const user = await res.json()
-            sival(user.cartprod || {})  // load saved cart into state
+            try {
+                const ref = doc(db, "Users", userId);
+                const snap = await getDoc(ref);
+                if (snap.exists()) {
+                    sival(snap.data().cartprod || {});
+                }
+            } catch (err) {
+                console.error("Failed to load cart:", err);
+            }
+        };
+        if (userId) loadCart();
+    }, [userId]);
+
+    // Save cart to Firestore
+    const saveCart = async (newCart) => {
+        try {
+            const ref = doc(db, "Users", userId);
+            const snap = await getDoc(ref);
+            if (snap.exists()) {
+                await updateDoc(ref, { cartprod: newCart }); // update existing user doc
+            } else {
+                await setDoc(ref, { cartprod: newCart }); // create if not exists
+            }
+        } catch (err) {
+            console.error("Failed to save cart:", err);
         }
-        if (userId) loadCart()
-    }, [userId])
+    };
 
     const incid = async (id) => {
-        const newVal = (ival[id] || 0) + 1;
-        const newCart = { ...ival, [id]: newVal };
-
+        const newCart = { ...ival, [id]: (ival[id] || 0) + 1 };
         sival(newCart);
-        localStorage.setItem("userCart", JSON.stringify(newCart));
-
-        try {
-            await fetch(`http://localhost:3006/Users/${userId}`, {
-                method: "PATCH",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ cartprod: newCart })
-            });
-        } catch (err) {
-            console.error("Failed to update cart:", err);
-        }
+        if (userId) await saveCart(newCart);
     };
 
     const decid = async (id) => {
         const currentVal = ival[id] || 0;
+        let newCart;
         if (currentVal <= 1) {
-            const { [id]: _, ...newCart } = ival; // remove item entirely
-            sival(newCart);
-            localStorage.setItem("userCart", JSON.stringify(newCart));
-            await fetch(`http://localhost:3006/Users/${userId}`, {
-                method: "PATCH",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ cartprod: newCart })
-            });
+            const { [id]: _, ...rest } = ival; // remove item
+            newCart = rest;
         } else {
-            const newCart = { ...ival, [id]: currentVal - 1 };
-            sival(newCart);
-            localStorage.setItem("userCart", JSON.stringify(newCart));
-            await fetch(`http://localhost:3006/Users/${userId}`, {
-                method: "PATCH",
-                headers: { "content-type": "application/json" },
-                body: JSON.stringify({ cartprod: newCart })
-            });
+            newCart = { ...ival, [id]: currentVal - 1 };
         }
+        sival(newCart);
+        if (userId) await saveCart(newCart);
     };
-
 
     return (
         <div className="mt-5 container d-flex flex-wrap gap-4 justify-content-between">
