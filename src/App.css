@@ -1,0 +1,31 @@
+a {
+    text-decoration: none;
+    color: black;
+    font-size: 17px;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+header {
+    background-color: rgb(188, 176, 200);
+    position: fixed;
+    z-index: 1000;
+    top: 0px;
+}
+
+ul li a {
+    border: 1px solid black;
+    padding: 6px;
+    border-radius: 7px;
+    color: rgb(96, 68, 73);
+    background-color: rgb(197, 193, 207);
+}
+
+ul li a:hover {
+    color: antiquewhite;
+    background-color: black;
+}
+
+input {
+    width: 300px;
+    border-radius: 7px;
+}

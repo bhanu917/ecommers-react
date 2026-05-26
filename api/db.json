@@ -1,0 +1,16 @@
+{
+  "users": [
+    {
+      "name": "bhanu",
+      "email": "bhanuprakashu1@gmail.com",
+      "firebaseUid": "q68kurgaAyfxxKblGN5idDJO1sw2",
+      "cartprod": {
+        "1": 0,
+        "2": 3,
+        "3": 0,
+        "5": 0
+      },
+      "id": 2
+    }
+  ]
+}
